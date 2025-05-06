@@ -1,0 +1,34 @@
+name: Deploy to OpenShift
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Install OpenShift CLI (oc)
+        run: |
+          curl -L https://mirror.openshift.com/pub/openshift-v4/clients/oc/latest/linux/oc.tar.gz -o oc.tar.gz
+          tar -xzf oc.tar.gz
+          sudo mv oc /usr/local/bin/oc
+
+      - name: Login to OpenShift
+        run: |
+          oc login --token=${{ secrets.OPENSHIFT_TOKEN }} --server=${{ secrets.OPENSHIFT_SERVER }}
+
+      - name: Set Project
+        run: oc project githubactions
+
+      - name: Deploy Application
+        run: oc apply -f deploy/deployment.yaml
+
+      - name: Expose Application
+        run: |
+          oc expose deployment sample-app --port=80 || echo "Deployment already exposed"
+          oc expose svc/sample-app || echo "Service already exposed"
